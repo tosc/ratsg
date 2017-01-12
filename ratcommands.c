@@ -13,6 +13,7 @@
  */
 int current_group()
 {
+	int c_group = 0;
 	// Variables used for piping.
 	char buffer[256];
 	FILE *fp;
@@ -21,15 +22,14 @@ int current_group()
 	fp = popen("ratpoison -c groups", "r");
 	while(fgets(buffer, sizeof(buffer) - 1, fp) != NULL)
 	{
-		int te = buffer[0] - '0';
+		c_group = buffer[0] - '0';
 		if (buffer[1] == '*')
 		{
-			return te;
+			break;
 		}
 	}
 	pclose(fp);
-
-	return 0;
+	return c_group;
 }
 
 /**
