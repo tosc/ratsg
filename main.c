@@ -81,9 +81,6 @@ void server()
 				send_info(group_string, FIFO_OUTPUT);
 			}
 		}
-
-		// If the server is to resource heavy, use sleep.
-		usleep(100000);
 	}
 }
 
