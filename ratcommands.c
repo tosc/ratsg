@@ -116,7 +116,7 @@ void update_session(ratsession *session)
 			c_group->next = new_group();
 
 			// Have ratpoison create this group also.
-			sprintf(command, "ratpoison -c 'gnewbg :%d:'", i+1);
+			sprintf(command, "ratpoison -c 'gnewbg :%d'", i+1);
 			system(command);
 		}
 		c_group = c_group->next;
@@ -124,7 +124,7 @@ void update_session(ratsession *session)
 	}
 	// Make ratpoison switch to the groups that should be
 	// the current one.
-	sprintf(command, "ratpoison -c 'gselect :%d:'", session->current_frame);
+	sprintf(command, "ratpoison -c 'gselect :%d'", session->current_frame);
 	system(command);
 
 	// Run the external ratpoison command to get all the current windows.

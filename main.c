@@ -61,6 +61,9 @@ void server()
 {
 	// Initialize the grouplist.
 	ratsession *session = new_session();
+	
+	// Updates existing ratpoison group to follow my naming.
+	system("ratpoison -c 'grename :0'");
 
 	while(1)
 	{
