@@ -6,6 +6,78 @@
 #include "ratcommands.h"
 
 /**
+ * Get the current screens.
+ *
+ * @return A pointer to a screen struct with information about all the current screens.
+ */
+screen* get_screens()
+{
+	// Run the external ratpoison command to get all the current windows.
+	char buffer[8192];
+	FILE *fp;
+	fp = popen("ratpoison -c sdump", "r");
+
+	// Add a new window for each line.
+	fgets(buffer, sizeof(buffer) - 1, fp);
+	pclose(fp);
+
+	// Backup the information from the ratpoison command.
+	char bufferold[8192];
+	strcpy(bufferold, buffer);
+
+	// Get the number of screens active and save it in the variable screen.
+	char *pch;
+	pch = strtok(buffer, "() ,\n");
+	int i = 0;
+	int screen_nr = 0;
+	while(pch != NULL)
+	{
+		if(i == 0)
+		{
+			screen_nr++;
+		}
+		pch = strtok(NULL, "() ,\n");
+		i++;
+		if(i == 6)
+		{
+			i = 0;
+		}
+	}
+
+	// Make room for all the screens.
+	screen *screens = malloc(sizeof(screen) * screen_nr);
+
+	// Get the information about all the screens.
+	strcpy(buffer, bufferold);
+	pch = strtok(buffer, "() ,\n");
+	i = 0;
+	screen_nr = 0;
+	while(pch != NULL)
+	{
+		if(i == 0)
+		{
+			screen_nr++;
+		}
+		else if(i == 1)
+		{
+			screens[screen_nr - 1].x = atoi(pch);
+		}
+		else if(i == 2)
+		{
+			screens[screen_nr - 1].y = atoi(pch);
+		}
+		pch = strtok(NULL, "() ,\n");
+		i++;
+		if(i == 6)
+		{
+			i = 0;
+		}
+	}
+
+	return screens;
+}
+
+/**
  * Returns the current ratpoison frame.
  *
  * @return The current ratpoison frame.
@@ -122,8 +194,7 @@ void update_session(ratsession *session)
 		c_group = c_group->next;
 		i++;
 	}
-	// Make ratpoison switch to the groups that should be
-	// the current one.
+	// Make ratpoison switch to the current group.
 	sprintf(command, "ratpoison -c 'gselect :%d'", session->current_frame);
 	system(command);
 

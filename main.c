@@ -61,13 +61,16 @@ void server()
 {
 	// Initialize the grouplist.
 	ratsession *session = new_session();
+
+	// Get information about all the screens.
+	screen *screens = get_screens();
 	
 	// Updates existing ratpoison group to follow my naming.
 	system("ratpoison -c 'grename :0'");
 
 	while(1)
 	{
-		// Gets all the ratpoison information.
+		// Update session information.
 		update_session(session);
 
 		// Check for new commands.

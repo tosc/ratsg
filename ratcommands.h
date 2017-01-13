@@ -20,6 +20,14 @@ typedef struct ratsession_struct
 	int current_frame;
 } ratsession;
 
+typedef struct screen_struct
+{
+	int x;
+	int y;
+} screen;
+
+screen* get_screens();
+
 int current_frame();
 
 void free_windows(window *windowlist);
