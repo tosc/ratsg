@@ -16,7 +16,7 @@ int current_group()
 	// Variables used for piping.
 	char buffer[256];
 	FILE *fp;
-	
+
 	// Runs external ratpoison command that lists all groups.
 	fp = popen("ratpoison -c groups", "r");
 	while(fgets(buffer, sizeof(buffer) - 1, fp) != NULL)
@@ -42,7 +42,7 @@ int current_frame()
 	// Variables used for piping.
 	char buffer[256];
 	FILE *fp;
-	
+
 	fp = popen("ratpoison -c curframe", "r");
 	fgets(buffer, sizeof(buffer) - 1, fp);
 	c_frame = buffer[0] - '0';
@@ -129,9 +129,10 @@ void update_session(ratsession *session)
 		}
 		c_group = c_group->next;
 	}
-	
+
 
 	// Get current group. Creates more groups if needed.
+	char command[128];
 	int c_group_nr = session->current_frame;
 	int i = 0;
 	c_group = session->grouplist;
@@ -140,52 +141,57 @@ void update_session(ratsession *session)
 		if(c_group->next == NULL)
 		{
 			c_group->next = new_group();
+
+			// Have ratpoison create this group also.
+			sprintf(command, "ratpoison -c 'gnewbg :%d:'", i+1);
+			system(command);
 		}
 		c_group = c_group->next;
 		i++;
 	}
+	// Make ratpoison switch to the groups that should be
+	// the current one.
+	sprintf(command, "ratpoison -c 'gselect :%d:'", session->current_frame);
+	system(command);
 
 	// Run the external ratpoison command to get all the current windows.
 	char buffer[256];
 	FILE *fp;
 	fp = popen("ratpoison -c windows", "r");
 
-	if(c_group_nr == current_group())
+	free_windows(c_group->windowlist);
+	c_group->windowlist = NULL;
+	window *windowlist;
+	// Add a new window for each line.
+	while(fgets(buffer, sizeof(buffer) - 1, fp) != NULL)
 	{
-		free_windows(c_group->windowlist);
-		c_group->windowlist = NULL;
-		window *windowlist;
-		// Add a new window for each line.
-		while(fgets(buffer, sizeof(buffer) - 1, fp) != NULL)
+		window *w = new_window();
+		w->status= 1;
+		if(buffer[1] == '*')
 		{
-			window *w = new_window();
-			w->status= 1;
-			if(buffer[1] == '*')
-			{
-				w->status= 2;
-			}
-			buffer[strcspn(buffer, "\n")] = 0;
-			buffer[1] = '-';
-			if(buffer[0] != 'N')
-			{
-				strcpy(w->name, buffer);
-			}
-			else
-			{
-				strcpy(w->name, "-");
-				w->status= 2;
-			}
-			
-			if(c_group->windowlist == NULL)
-			{
-				windowlist = w;
-				c_group->windowlist = windowlist;
-			}
-			else
-			{
-				windowlist->next = w;
-				windowlist = w;
-			}
+			w->status= 2;
+		}
+		buffer[strcspn(buffer, "\n")] = 0;
+		buffer[1] = '-';
+		if(buffer[0] != 'N')
+		{
+			strcpy(w->name, buffer);
+		}
+		else
+		{
+			strcpy(w->name, "-");
+			w->status= 2;
+		}
+
+		if(c_group->windowlist == NULL)
+		{
+			windowlist = w;
+			c_group->windowlist = windowlist;
+		}
+		else
+		{
+			windowlist->next = w;
+			windowlist = w;
 		}
 	}
 	pclose(fp);
@@ -231,7 +237,7 @@ void session_to_string(ratsession *session, char *group_string)
 				// Orange
 				strcat(group_string, "<fc=#ee9a00>");
 			}
-			
+
 			strcat(group_string, c_window->name);
 			strcat(group_string, "</fc> ");
 			first = 0;
