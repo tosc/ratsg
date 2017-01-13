@@ -71,7 +71,7 @@ void server()
 	while(1)
 	{
 		// Update session information.
-		update_session(session);
+		update_session(session, screens);
 
 		// Check for new commands.
 		char command[COMMAND_MAX];

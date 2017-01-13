@@ -12,6 +12,9 @@ typedef struct group_struct
 {
 	window *windowlist;
 	struct group_struct *next;	
+	int nr;
+	int x;
+	int y;
 } group;
 
 typedef struct ratsession_struct
@@ -38,7 +41,11 @@ window* new_window();
 
 ratsession* new_session();
 
-void update_session(ratsession *session);
+void update_group(group *c_group, screen *screens);
+
+void sort_session(ratsession *session);
+
+void update_session(ratsession *session, screen *screens);
 
 void session_to_string(ratsession *session, char *group_string);
 
