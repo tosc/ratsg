@@ -184,12 +184,16 @@ void session_to_string(ratsession *session, char *group_string)
 	group *c_group = session->grouplist;
 	while(c_group != NULL)
 	{
-		// Add an orange | between each group.
-		if(first == 0)
-		{
-			strcat(group_string, "<fc=#ee9a00>|</fc> ");
-		}
 		window *c_window = c_group->windowlist;
+		// Add an orange | between each group.
+		if(c_window != NULL)
+		{
+			if(first == 0)
+			{
+				strcat(group_string, "<fc=#ee9a00>|</fc> ");
+			}
+			first = 0;
+		}
 		while(c_window != NULL)
 		{
 			// If the window is inactive.
@@ -213,7 +217,6 @@ void session_to_string(ratsession *session, char *group_string)
 
 			strcat(group_string, c_window->name);
 			strcat(group_string, "</fc> ");
-			first = 0;
 			c_window = c_window->next;
 		}
 		c_group = c_group->next;
