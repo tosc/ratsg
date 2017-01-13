@@ -32,6 +32,25 @@ int current_group()
 }
 
 /**
+ * Returns the current ratpoison frame.
+ *
+ * @return The current ratpoison frame.
+ */
+int current_frame()
+{
+	int c_frame = 0;
+	// Variables used for piping.
+	char buffer[256];
+	FILE *fp;
+	
+	fp = popen("ratpoison -c curframe", "r");
+	fgets(buffer, sizeof(buffer) - 1, fp);
+	c_frame = buffer[0] - '0';
+	pclose(fp);
+	return c_frame;
+}
+
+/**
  * Delete window list.
  *
  * @param The window list you wish to delete.
@@ -79,14 +98,14 @@ window* new_window()
  *
  * @return Returns the new ratsession.
  */
- ratsession* new_session()
- {
+ratsession* new_session()
+{
  	ratsession *new_session = malloc(sizeof(ratsession));
 	new_session->grouplist = new_group();
 	new_session->current_frame = 0;
 	new_session->current_group = 0;
 	return new_session;
- }
+}
 
 /**
  * Update the session.
@@ -95,6 +114,9 @@ window* new_window()
  */
 void update_session(ratsession *session)
 {
+	// Update framenr.
+	session->current_frame = current_frame();
+
 	// Change all current windows to inactive.
 	group *c_group = session->grouplist;
 	while(c_group != NULL)

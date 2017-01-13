@@ -23,6 +23,8 @@ typedef struct ratsession_struct
 
 int current_group();
 
+int current_frame();
+
 void free_windows(window *windowlist);
 
 group* new_group();
