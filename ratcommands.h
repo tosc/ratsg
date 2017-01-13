@@ -14,6 +14,13 @@ typedef struct group_struct
 	struct group_struct *next;	
 } group;
 
+typedef struct ratsession_struct
+{
+	group *grouplist;
+	int current_frame;
+	int current_group;
+} ratsession;
+
 int current_group();
 
 void free_windows(window *windowlist);
@@ -22,8 +29,10 @@ group* new_group();
 
 window* new_window();
 
-void update_groups(group *grouplist);
+ratsession* new_session();
 
-void groups_to_string(group *grouplist, char *group_string);
+void update_session(ratsession *session);
+
+void session_to_string(ratsession *session, char *group_string);
 
 #endif

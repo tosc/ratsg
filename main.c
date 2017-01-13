@@ -60,12 +60,12 @@ int get_info(char *info, char *fifo)
 void server()
 {
 	// Initialize the grouplist.
-	group *grouplist = new_group();
+	ratsession *session = new_session();
 
 	while(1)
 	{
 		// Gets all the ratpoison information.
-		update_groups(grouplist);
+		update_session(session);
 
 		// Check for new commands.
 		char command[COMMAND_MAX];
@@ -73,12 +73,12 @@ void server()
 		{
 			printf("%s\n", command);
 
-			// Print all groups.
+			// Print session
 			if(strcmp(command, "status") == 0)
 			{
-				char group_string[COMMAND_MAX];
-				groups_to_string(grouplist, group_string);
-				send_info(group_string, FIFO_OUTPUT);
+				char session_string[COMMAND_MAX];
+				session_to_string(session, session_string);
+				send_info(session_string, FIFO_OUTPUT);
 			}
 		}
 	}
@@ -99,9 +99,9 @@ int main( int argc, char *argv[] )
 	{
 		send_info(argv[1], FIFO_COMMAND);
 
-		// If you sent status to the server, print the response you get.
 		if(strcmp(argv[1], "status") == 0)
 		{
+			// Wait for response from server and print it.
 			while(1)
 			{
 				char output[COMMAND_MAX];

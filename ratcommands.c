@@ -5,7 +5,6 @@
 #include <fcntl.h>
 #include "ratcommands.h"
 
-
 /**
  * Returns the current group number.
  *
@@ -76,14 +75,28 @@ window* new_window()
 }
 
 /**
- * Update the windows in the group supplied.
+ * Create new ratsession.
  *
- * @param grouplist The list of groups to update.
+ * @return Returns the new ratsession.
  */
-void update_groups(group *grouplist)
+ ratsession* new_session()
+ {
+ 	ratsession *new_session = malloc(sizeof(ratsession));
+	new_session->grouplist = new_group();
+	new_session->current_frame = 0;
+	new_session->current_group = 0;
+	return new_session;
+ }
+
+/**
+ * Update the session.
+ *
+ * @param session The current ratsession.
+ */
+void update_session(ratsession *session)
 {
 	// Change all current windows to inactive.
-	group *c_group = grouplist;
+	group *c_group = session->grouplist;
 	while(c_group != NULL)
 	{
 		window *c_window = c_group->windowlist;
@@ -97,9 +110,9 @@ void update_groups(group *grouplist)
 	
 
 	// Get current group. Creates more groups if needed.
-	int c_group_nr = current_group();	
+	int c_group_nr = session->current_frame;
 	int i = 0;
-	c_group = grouplist;
+	c_group = session->grouplist;
 	while(i < c_group_nr)
 	{
 		if(c_group->next == NULL)
@@ -157,17 +170,17 @@ void update_groups(group *grouplist)
 }
 
 /**
- * Returns a string representing all groups and windows.
+ * A string representation of the current session.
  *
- * @param groups The groups you want a string representation of.
+ * @param session The ratsession you wish to print.
  * @param group_string Where to store the string representation.
  * @return A string representation of all groups and windows.
  */
-void groups_to_string(group *grouplist, char *group_string)
+void session_to_string(ratsession *session, char *group_string)
 {
 	int first = 1;
 	strcpy(group_string, "");
-	group *c_group = grouplist;
+	group *c_group = session->grouplist;
 	while(c_group != NULL)
 	{
 		// Add an orange | between each group.
