@@ -18,10 +18,7 @@ typedef struct ratsession_struct
 {
 	group *grouplist;
 	int current_frame;
-	int current_group;
 } ratsession;
-
-int current_group();
 
 int current_frame();
 

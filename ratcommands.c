@@ -6,32 +6,6 @@
 #include "ratcommands.h"
 
 /**
- * Returns the current group number.
- *
- * @return the current group number.
- */
-int current_group()
-{
-	int c_group = 0;
-	// Variables used for piping.
-	char buffer[256];
-	FILE *fp;
-
-	// Runs external ratpoison command that lists all groups.
-	fp = popen("ratpoison -c groups", "r");
-	while(fgets(buffer, sizeof(buffer) - 1, fp) != NULL)
-	{
-		c_group = buffer[0] - '0';
-		if (buffer[1] == '*')
-		{
-			break;
-		}
-	}
-	pclose(fp);
-	return c_group;
-}
-
-/**
  * Returns the current ratpoison frame.
  *
  * @return The current ratpoison frame.
@@ -103,7 +77,6 @@ ratsession* new_session()
  	ratsession *new_session = malloc(sizeof(ratsession));
 	new_session->grouplist = new_group();
 	new_session->current_frame = 0;
-	new_session->current_group = 0;
 	return new_session;
 }
 
