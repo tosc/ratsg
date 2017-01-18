@@ -41,9 +41,13 @@ window* new_window();
 
 ratsession* new_session();
 
+void fix_group_information(ratsession *session, screen *screens);
+
 void update_group(group *c_group, screen *screens);
 
 void sort_session(ratsession *session);
+
+group* current_group(ratsession * session);
 
 void update_session(ratsession *session, screen *screens);
 
