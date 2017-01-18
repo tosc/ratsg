@@ -267,7 +267,7 @@ void update_group(group *c_group, screen *screens)
 }
 
 /**
- * Sort groups in session.
+ * Sort groups in session by x value or y if x are the same.
  *
  * @param session Ratsession with the groups you wish to sort.
  */
@@ -291,13 +291,24 @@ void sort_session(ratsession *session)
 			group *smaller_group = NULL;
 			group *larger_group = grouplist;
 			// Find where you belong.
-			while((larger_group != NULL) && (c_group->x > larger_group->x))
+			while(larger_group != NULL)
 			{
+				if(c_group->x < larger_group->x)
+				{
+					break;
+				}
+				else if(c_group->x == larger_group->x)
+				{
+					if(c_group->y < larger_group->y)
+					{
+						break;
+					}
+				}
 				smaller_group = larger_group;
 				larger_group = larger_group->next;
 			}
 
-			// If this group is the smallet, add it to the front.
+			// If this group is the smallest, add it to the front.
 			if(smaller_group == NULL)
 			{
 				c_group->next = grouplist;
