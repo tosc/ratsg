@@ -11,45 +11,33 @@ typedef struct window_struct
 typedef struct group_struct
 {
 	window *windowlist;
-	struct group_struct *next;	
-	int nr;
+	int sorted_nr;
 	int x;
-	int y;
 } group;
 
 typedef struct ratsession_struct
 {
 	group *grouplist;
-	int current_frame;
+	group **sortedlist;
+	int group_len;
+	int current_screen;
 } ratsession;
 
-typedef struct screen_struct
-{
-	int x;
-	int y;
-} screen;
-
-screen* get_screens();
+void* create_group(ratsession *session);
 
 int current_frame();
 
-void free_windows(window *windowlist);
+int current_screen();
 
-group* new_group();
+void free_windows(window *windowlist);
 
 window* new_window();
 
 ratsession* new_session();
 
-void fix_group_information(ratsession *session, screen *screens);
+void update_group(ratsession *session);
 
-void update_group(group *c_group, screen *screens);
-
-void sort_session(ratsession *session);
-
-group* current_group(ratsession * session);
-
-void update_session(ratsession *session, screen *screens);
+void update_session(ratsession *session);
 
 void session_to_string(ratsession *session, char *group_string);
 

@@ -6,11 +6,11 @@
 #include "ratcommands.h"
 
 /**
- * Get the current screens.
+ * Create all the groups and add them to session
  *
- * @return A pointer to a screen struct with information about all the current screens.
+ * @return Current ratsession.
  */
-screen* get_screens()
+void create_groups(ratsession *session)
 {
 	// Run the external ratpoison command to get all the current windows.
 	char buffer[8192];
@@ -43,11 +43,13 @@ screen* get_screens()
 			i = 0;
 		}
 	}
+	session->group_len = screen_nr;
 
 	// Make room for all the screens.
-	screen *screens = malloc(sizeof(screen) * screen_nr);
+	group *groups = malloc(sizeof(group) * screen_nr);
 
 	// Get the information about all the screens.
+// Get current group. Creates more groups if needed.
 	strcpy(buffer, bufferold);
 	pch = strtok(buffer, "() ,\n");
 	i = 0;
@@ -60,11 +62,12 @@ screen* get_screens()
 		}
 		else if(i == 1)
 		{
-			screens[screen_nr - 1].x = atoi(pch);
-		}
-		else if(i == 2)
-		{
-			screens[screen_nr - 1].y = atoi(pch);
+			char command[128];
+			sprintf(command, "ratpoison -c 'gnewbg :%d'", screen_nr - 1);
+			system(command);
+			groups[screen_nr - 1].x = atoi(pch);
+			groups[screen_nr - 1].sorted_nr = screen_nr - 1;
+			groups[screen_nr - 1].windowlist = NULL;
 		}
 		pch = strtok(NULL, "() ,\n");
 		i++;
@@ -74,7 +77,7 @@ screen* get_screens()
 		}
 	}
 
-	return screens;
+	session->grouplist = groups;
 }
 
 /**
@@ -97,6 +100,54 @@ int current_frame()
 }
 
 /**
+ * Returns the current ratpoison screen.
+ *
+ * @return The current ratpoison screen.
+ */
+int current_screen()
+{
+	// Get information about all frames.
+	char buffer[8192];
+	FILE *fp = popen("ratpoison -c sfdump", "r");
+	fgets(buffer, sizeof(buffer) - 1, fp);
+	pclose(fp);
+
+	// Go through information about frames.
+	char *pch;
+	pch = strtok(buffer, "() ,\n");
+	int i = 0;
+	int c_frame = current_frame();
+	int frame = -1;
+	while(pch != NULL)
+	{
+		// pch is at the start of a new frame.
+		if(strcmp(pch, "frame") == 0)
+		{
+			i = 0;
+		}
+
+		// pch is framenumber.
+		if(i == 2)
+		{
+			frame = atoi(pch);
+		}
+
+		//pch is screennr.
+		else if(i == 21)
+		{
+			if(frame == c_frame)
+			{
+				return atoi(pch);	
+			}
+		}
+
+		pch = strtok(NULL, "() ,\n");
+		i++;
+	}
+	return -1;
+}
+
+/**
  * Delete window list.
  *
  * @param The window list you wish to delete.
@@ -110,22 +161,6 @@ void free_windows(window *windowlist)
 		windowlist = windowlist->next;
 		free(tmp);
 	}
-}
-
-/**
- * Create a new group.
- *
- * @return Returns a pointer to a new group.
- */
-group* new_group()
-{
-	group *new_group = malloc(sizeof(group));
-	new_group->next = NULL;
-	new_group->windowlist = NULL;
-	new_group->x = 0;
-	new_group->y = 0;
-	new_group->nr = -1;
-	return new_group;
 }
 
 /**
@@ -150,86 +185,25 @@ window* new_window()
 ratsession* new_session()
 {
  	ratsession *new_session = malloc(sizeof(ratsession));
-	new_session->grouplist = new_group();
-	new_session->grouplist->nr = 0;
-	new_session->current_frame = 0;
+	new_session->group_len = 0;
+	new_session->current_screen = 0;
+	new_session->grouplist = NULL;
+	create_groups(new_session);
 	return new_session;
 }
 
 /**
- * Update location of all groups.
- * @param session The current session.
- * @param screens The current screens.
+ * Update the current group.
  */
-void fix_group_information(ratsession *session, screen *screens)
-{
-	// Get information about all frames.
-	char buffer[8192];
-	FILE *fp = popen("ratpoison -c sfdump", "r");
-	fgets(buffer, sizeof(buffer) - 1, fp);
-	pclose(fp);
-
-	// Go through information about frames.
-	char *pch;
-	pch = strtok(buffer, "() ,\n");
-	int i = 0;
-	int x = 0;
-	int y = 0;
-	screen c_screen;
-	group *c_group = session->grouplist;
-	while(pch != NULL)
-	{
-		// pch is at the start of a new frame.
-		if(strcmp(pch, "frame") == 0)
-		{
-			i = 0;
-		}
-
-		// pch is framenumber.
-		if(i == 2)
-		{
-			session->current_frame = atoi(pch);
-			c_group = current_group(session);
-		}
-
-		//pch is screennr.
-		else if(i == 21)
-		{
-			c_screen = screens[atoi(pch)];
-			c_group->x = x + c_screen.x;
-			c_group->y = y + c_screen.y;
-		}
-
-		//pch is frames x position..
-		else if(i == 4)
-		{
-			x = atoi(pch);
-		}
-
-		//pch is frames y position..
-		else if(i == 6)
-		{
-			y = atoi(pch);
-		}
-		pch = strtok(NULL, "() ,\n");
-		i++;
-	}
-}
-
-/**
- * Update group.
- *
- * @param c_group The group you wish to update.
- * @param screens The current screens.
- */
-void update_group(group *c_group, screen *screens)
+void update_group(ratsession *session)
 {
 	char buffer[8192];
 	// Run the external ratpoison command to get all the current windows.
 	FILE *fp = popen("ratpoison -c windows", "r");
 
-	free_windows(c_group->windowlist);
-	c_group->windowlist = NULL;
+	group c_group = session->grouplist[session->current_screen];
+	free_windows(c_group.windowlist);
+	c_group.windowlist = NULL;
 	window *windowlist;
 	// Add a new window for each line.
 	while(fgets(buffer, sizeof(buffer) - 1, fp) != NULL)
@@ -252,10 +226,10 @@ void update_group(group *c_group, screen *screens)
 			w->status= 2;
 		}
 
-		if(c_group->windowlist == NULL)
+		if(c_group.windowlist == NULL)
 		{
 			windowlist = w;
-			c_group->windowlist = windowlist;
+			c_group.windowlist = windowlist;
 		}
 		else
 		{
@@ -263,95 +237,8 @@ void update_group(group *c_group, screen *screens)
 			windowlist = w;
 		}
 	}
+	session->grouplist[session->current_screen] = c_group;
 	pclose(fp);
-}
-
-/**
- * Sort groups in session by x value or y if x are the same.
- *
- * @param session Ratsession with the groups you wish to sort.
- */
-void sort_session(ratsession *session)
-{
-	group *c_group = session->grouplist;
-	group *grouplist = NULL;
-	// While there are more groups to sort.
-	while(c_group != NULL)
-	{
-		group *c_group_tail = c_group->next;
-		c_group->next = NULL;
-
-		// If the sorted list is empty, add the first one.
-		if(grouplist == NULL)
-		{
-			grouplist = c_group;
-		}
-		else
-		{
-			group *smaller_group = NULL;
-			group *larger_group = grouplist;
-			// Find where you belong.
-			while(larger_group != NULL)
-			{
-				if(c_group->x < larger_group->x)
-				{
-					break;
-				}
-				else if(c_group->x == larger_group->x)
-				{
-					if(c_group->y < larger_group->y)
-					{
-						break;
-					}
-				}
-				smaller_group = larger_group;
-				larger_group = larger_group->next;
-			}
-
-			// If this group is the smallest, add it to the front.
-			if(smaller_group == NULL)
-			{
-				c_group->next = grouplist;
-				grouplist = c_group;
-			}
-			// Otherwise, add it between the groups.
-			else
-			{
-				smaller_group->next = c_group;
-				c_group->next = larger_group;
-			}
-		}
-		c_group = c_group_tail;
-	}
-	session->grouplist = grouplist;
-}
-
-/**
- * Get the current group or create it if necessary.
- *
- * @param session Current ratsession.
- */
-group* current_group(ratsession * session)
-{
-	char command[128];
-	int c_group_nr = session->current_frame;
-	int i = 0;
-	group *c_group = session->grouplist;
-	while(c_group->nr != c_group_nr)
-	{
-		if(c_group->next == NULL)
-		{
-			c_group->next = new_group();
-			c_group->next->nr = i+1;
-
-			// Have ratpoison create this group also.
-			sprintf(command, "ratpoison -c 'gnewbg :%d'", i+1);
-			system(command);
-		}
-		c_group = c_group->next;
-		i++;
-	}
-	return c_group;
 }
 
 /**
@@ -359,39 +246,30 @@ group* current_group(ratsession * session)
  *
  * @param session The current ratsession.
  */
-void update_session(ratsession *session, screen *screens)
+void update_session(ratsession *session)
 {
-	fix_group_information(session, screens);
-	// Update framenr.
-	session->current_frame = current_frame();
+	// Update screennr.
+	session->current_screen = current_screen();
 
 	// Change all current windows to inactive.
-	group *c_group = session->grouplist;
-	while(c_group != NULL)
+	int i;
+	for(i = 0; i < session->group_len; i = i + 1)
 	{
-		window *c_window = c_group->windowlist;
+		window *c_window = session->grouplist[i].windowlist;
 		while(c_window != NULL)
 		{
 			c_window->status = 0;
 			c_window = c_window->next;
 		}
-		c_group = c_group->next;
 	}
-
-
-	// Get current group. Creates more groups if needed.
-	c_group = current_group(session);
 
 	// Make ratpoison switch to the current group.
 	char command[128];
-	sprintf(command, "ratpoison -c 'gselect :%d'", session->current_frame);
+	sprintf(command, "ratpoison -c 'gselect :%d'", session->current_screen);
 	system(command);
 
 	// Update current groups information.
-	update_group(c_group, screens);
-
-	// Sort the session.
-	sort_session(session);
+	update_group(session);
 }
 
 /**
@@ -405,20 +283,48 @@ void session_to_string(ratsession *session, char *group_string)
 {
 	int first = 1;
 	strcpy(group_string, "");
-	group *c_group = session->grouplist;
-	while(c_group != NULL)
+	int i;
+	int lastX = -1;
+	for(i = 0; i < session->group_len; i = i + 1)
 	{
-		window *c_window = c_group->windowlist;
-		// Add an orange | between each group.
-		if(c_window != NULL)
+		// Sort screens by X.
+		group c_group;
+		int j;
+		for(j = 0; j < session->group_len; j = j + 1)
 		{
-			if(first == 0)
+			group t_group = session->grouplist[j];
+			if(t_group.x > lastX)
 			{
-				strcat(group_string, "<fc=#ee9a00>|</fc> ");
+				c_group = t_group;
+				break;
 			}
-			first = 0;
 		}
+		for(j = 0; j < session->group_len; j = j + 1)
+		{
+			group t_group = session->grouplist[j];
+			if(t_group.x > lastX)
+			{
+				if(t_group.x < c_group.x)
+				{
+					c_group = t_group;
+				}
+			}
+		}
+		lastX = c_group.x;
+		window *c_window = c_group.windowlist;
 
+		// Add an orange | between each group.
+		if(first == 0)
+		{
+			strcat(group_string, "<fc=#ee9a00>|</fc> ");
+		}
+		first = 0;
+
+		if(c_window == NULL)
+		{
+			strcat(group_string, "<fc=#696665>-");
+			strcat(group_string, "</fc> ");
+		}
 		while(c_window != NULL)
 		{
 			// If the window is inactive.
@@ -444,7 +350,6 @@ void session_to_string(ratsession *session, char *group_string)
 			strcat(group_string, "</fc> ");
 			c_window = c_window->next;
 		}
-		c_group = c_group->next;
 	}
 	strcat(group_string, "\n\0");
 }
