@@ -11,7 +11,6 @@ typedef struct window_struct
 typedef struct group_struct
 {
 	window *windowlist;
-	int sorted_nr;
 	int x;
 } group;
 

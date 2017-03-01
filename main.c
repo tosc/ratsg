@@ -59,11 +59,11 @@ int get_info(char *info, char *fifo)
  */
 void server()
 {
-	// Initialize the grouplist.
-	ratsession *session = new_session();
-	
 	// Updates existing ratpoison group to follow my naming.
 	system("ratpoison -c 'grename :0'");
+
+	// Initialize the grouplist.
+	ratsession *session = new_session();
 
 	while(1)
 	{

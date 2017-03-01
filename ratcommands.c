@@ -49,7 +49,7 @@ void create_groups(ratsession *session)
 	group *groups = malloc(sizeof(group) * screen_nr);
 
 	// Get the information about all the screens.
-// Get current group. Creates more groups if needed.
+	// Get current group. Creates more groups if needed.
 	strcpy(buffer, bufferold);
 	pch = strtok(buffer, "() ,\n");
 	i = 0;
@@ -66,7 +66,6 @@ void create_groups(ratsession *session)
 			sprintf(command, "ratpoison -c 'gnewbg :%d'", screen_nr - 1);
 			system(command);
 			groups[screen_nr - 1].x = atoi(pch);
-			groups[screen_nr - 1].sorted_nr = screen_nr - 1;
 			groups[screen_nr - 1].windowlist = NULL;
 		}
 		pch = strtok(NULL, "() ,\n");
@@ -78,6 +77,38 @@ void create_groups(ratsession *session)
 	}
 
 	session->grouplist = groups;
+	// Sort the sorted groups
+	group **sortedgroups = malloc(sizeof(group *) * session->group_len);
+	int lastX = -1;
+	for(i = 0; i < session->group_len; i = i + 1)
+	{
+		// Sort screens by X.
+		int first = 1;
+		group *c_group;
+		int j;
+		// Go through entire list, find element with the smallest X
+		// that's bigger than the last elements X.
+		// Keep doing this for the entire list.
+		for(j = 0; j < session->group_len; j = j + 1)
+		{
+			group *t_group = &session->grouplist[j];
+			if(t_group->x > lastX)
+			{
+				if(first)
+				{
+					c_group = t_group;
+					first = 0;
+				}
+				if(t_group->x < c_group->x)
+				{
+					c_group = t_group;
+				}
+			}
+		}
+		lastX = c_group->x;
+		sortedgroups[i] = c_group;
+	}
+	session->sortedlist = sortedgroups;
 }
 
 /**
@@ -188,6 +219,7 @@ ratsession* new_session()
 	new_session->group_len = 0;
 	new_session->current_screen = 0;
 	new_session->grouplist = NULL;
+	new_session->sortedlist = NULL;
 	create_groups(new_session);
 	return new_session;
 }
@@ -284,34 +316,10 @@ void session_to_string(ratsession *session, char *group_string)
 	int first = 1;
 	strcpy(group_string, "");
 	int i;
-	int lastX = -1;
 	for(i = 0; i < session->group_len; i = i + 1)
 	{
-		// Sort screens by X.
-		group c_group;
-		int j;
-		for(j = 0; j < session->group_len; j = j + 1)
-		{
-			group t_group = session->grouplist[j];
-			if(t_group.x > lastX)
-			{
-				c_group = t_group;
-				break;
-			}
-		}
-		for(j = 0; j < session->group_len; j = j + 1)
-		{
-			group t_group = session->grouplist[j];
-			if(t_group.x > lastX)
-			{
-				if(t_group.x < c_group.x)
-				{
-					c_group = t_group;
-				}
-			}
-		}
-		lastX = c_group.x;
-		window *c_window = c_group.windowlist;
+		group *c_group = session->sortedlist[i];
+		window *c_window = c_group->windowlist;
 
 		// Add an orange | between each group.
 		if(first == 0)
