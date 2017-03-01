@@ -39,11 +39,9 @@ int get_info(char *info, char *fifo)
 {
 	int status = 0;
 	int fd;
-	char buf[COMMAND_MAX];
 	fd = open(fifo, O_RDONLY);
-	if(read(fd, buf, COMMAND_MAX) > 0)
+	if(read(fd, info, COMMAND_MAX) > 0)
 	{
-		strcpy(info, buf);
 		status = 1;
 	}
 	else
@@ -52,6 +50,25 @@ int get_info(char *info, char *fifo)
 	}
 	close(fd);
 	return status;
+}
+
+/**
+ * Write to status file.
+ */
+ void write_status(ratsession *session)
+ {
+	FILE *f;
+	f = fopen("/tmp/ratbar", "w");
+	if(f == NULL)
+	{
+		printf("Error!");
+		exit(1);
+	}
+
+	char session_string[COMMAND_MAX];
+	session_to_string(session, session_string);
+	fprintf(f, "%s", session_string);
+	fclose(f);
 }
 
 /**
@@ -76,13 +93,18 @@ void server()
 		{
 			printf("%s\n", command);
 
-			// Print session
-			if(strcmp(command, "status") == 0)
+			if(strcmp(command, "move-l") == 0)
 			{
-				char session_string[COMMAND_MAX];
-				session_to_string(session, session_string);
-				send_info(session_string, FIFO_OUTPUT);
+				screen_l(session);
 			}
+			else if(strcmp(command, "move-r") == 0)
+			{
+				screen_r(session);
+			}
+		}
+		else
+		{
+			write_status(session);
 		}
 	}
 }
@@ -100,20 +122,29 @@ int main( int argc, char *argv[] )
 	// to the currently running server.
 	if(argc == 2)
 	{
-		send_info(argv[1], FIFO_COMMAND);
-
 		if(strcmp(argv[1], "status") == 0)
 		{
 			// Wait for response from server and print it.
-			while(1)
+			FILE *f;
+			f = fopen("/tmp/ratbar", "r");
+			if(f == NULL)
 			{
-				char output[COMMAND_MAX];
-				if (get_info(output, FIFO_OUTPUT))
-				{
-					printf("%s", output);
-					break;
-				}
+				printf("Error!");
+				exit(1);
 			}
+			
+			char ch;
+			while((ch = fgetc(f)) != EOF)
+			{
+				printf("%c", ch);
+			}
+		}
+		else
+		{
+			char info[COMMAND_MAX];
+			strcpy(info, argv[1]);
+			info[COMMAND_MAX - 1] = '\0';
+			send_info(argv[1], FIFO_COMMAND);
 		}
 	}
 	return 0;

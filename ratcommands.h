@@ -12,6 +12,9 @@ typedef struct group_struct
 {
 	window *windowlist;
 	int x;
+	int nr;
+	int next;
+	int prev;
 } group;
 
 typedef struct ratsession_struct
@@ -40,4 +43,7 @@ void update_session(ratsession *session);
 
 void session_to_string(ratsession *session, char *group_string);
 
+void screen_r(ratsession *session);
+
+void screen_l(ratsession *session);
 #endif

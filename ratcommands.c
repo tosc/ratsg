@@ -67,6 +67,7 @@ void create_groups(ratsession *session)
 			system(command);
 			groups[screen_nr - 1].x = atoi(pch);
 			groups[screen_nr - 1].windowlist = NULL;
+			groups[screen_nr - 1].nr = screen_nr - 1;
 		}
 		pch = strtok(NULL, "() ,\n");
 		i++;
@@ -109,6 +110,20 @@ void create_groups(ratsession *session)
 		sortedgroups[i] = c_group;
 	}
 	session->sortedlist = sortedgroups;
+
+	// Add links to next and previous screen.
+	group *p_group = NULL;
+	for(i = 0; i < session->group_len; i = i + 1)
+	{
+		if(p_group == NULL)
+		{
+			p_group = sortedgroups[session->group_len - 1];
+		}
+		group *c_group = sortedgroups[i];	
+		c_group->prev = p_group->nr;
+		p_group->next = c_group->nr;
+		p_group = c_group;
+	}
 }
 
 /**
@@ -360,4 +375,37 @@ void session_to_string(ratsession *session, char *group_string)
 		}
 	}
 	strcat(group_string, "\n\0");
+}
+
+/**
+ * Get the screennr to the right of the currently focused screen.
+ *
+ * @return The number of the screen to the right.
+ */
+void screen_r(ratsession *session)
+{
+	group c_group = session->grouplist[session->current_screen];
+	char command[100];
+	sprintf(command, "ratpoison -c 'gmove :%d'", c_group.next);
+	system(command);
+	system("ratpoison -c 'select -'");
+	update_session(session);
+	sprintf(command, "ratpoison -c 'sselect %d'", c_group.next);
+	system(command);
+	update_session(session);
+	system("ratpoison -c other");
+}
+
+void screen_l(ratsession *session)
+{
+	group c_group = session->grouplist[session->current_screen];
+	char command[100];
+	sprintf(command, "ratpoison -c 'gmove :%d'", c_group.prev);
+	system(command);
+	system("ratpoison -c 'select -'");
+	update_session(session);
+	sprintf(command, "ratpoison -c 'sselect %d'", c_group.prev);
+	system(command);
+	update_session(session);
+	system("ratpoison -c other");
 }
