@@ -38,7 +38,7 @@ void create_groups(ratsession *session)
 		}
 		pch = strtok(NULL, "() ,\n");
 		i++;
-		if(i == 6)
+		if(i == 7)
 		{
 			i = 0;
 		}
@@ -60,18 +60,33 @@ void create_groups(ratsession *session)
 		{
 			screen_nr++;
 		}
-		else if(i == 1)
+		else if(i == 2)
 		{
 			char command[128];
 			sprintf(command, "ratpoison -c 'gnewbg :%d'", screen_nr - 1);
 			system(command);
 			groups[screen_nr - 1].x = atoi(pch);
+			groups[screen_nr - 1].y = 0;
 			groups[screen_nr - 1].windowlist = NULL;
 			groups[screen_nr - 1].nr = screen_nr - 1;
+			groups[screen_nr - 1].width = 0;
+			groups[screen_nr - 1].height = 0;
+		}
+		else if(i == 3)
+		{
+			groups[screen_nr - 1].y = atoi(pch);
+		}
+		else if(i == 4)
+		{
+			groups[screen_nr - 1].width = atoi(pch);
+		}
+		else if(i == 5)
+		{
+			groups[screen_nr - 1].height = atoi(pch);
 		}
 		pch = strtok(NULL, "() ,\n");
 		i++;
-		if(i == 6)
+		if(i == 7)
 		{
 			i = 0;
 		}
@@ -378,11 +393,9 @@ void session_to_string(ratsession *session, char *group_string)
 }
 
 /**
- * Get the screennr to the right of the currently focused screen.
- *
- * @return The number of the screen to the right.
+ * Move the current window to the screen to the right.
  */
-void screen_r(ratsession *session)
+void move_r(ratsession *session)
 {
 	group c_group = session->grouplist[session->current_screen];
 	char command[100];
@@ -396,7 +409,10 @@ void screen_r(ratsession *session)
 	system("ratpoison -c other");
 }
 
-void screen_l(ratsession *session)
+/**
+ * Move the current window to the screen to the left.
+ */
+void move_l(ratsession *session)
 {
 	group c_group = session->grouplist[session->current_screen];
 	char command[100];
@@ -408,4 +424,84 @@ void screen_l(ratsession *session)
 	system(command);
 	update_session(session);
 	system("ratpoison -c other");
+}
+
+/**
+ * Select the screen to the right.
+ */
+void screen_r(ratsession *session)
+{
+	// Switch focus to right screen.
+	group c_group = session->grouplist[session->current_screen];
+	char command[100];
+	sprintf(command, "ratpoison -c 'sselect %d'", c_group.next);
+	system(command);
+
+	// Move mouse there.
+	c_group = session->grouplist[c_group.next];
+	int x = c_group.x + c_group.width/2;
+	int y = c_group.y + c_group.height/2;
+	sprintf(command, "ratpoison -c 'ratwarp %d %d'", x, y);
+	system(command);
+
+	update_session(session);
+}
+
+/**
+ * Select the screen to the left.
+ */
+void screen_l(ratsession *session)
+{
+	// Switch focus to left screen.
+	group c_group = session->grouplist[session->current_screen];
+	char command[100];
+	sprintf(command, "ratpoison -c 'sselect %d'", c_group.prev);
+	system(command);
+
+	// Move mouse there.
+	c_group = session->grouplist[c_group.next];
+	int x = c_group.x + c_group.width/2;
+	int y = c_group.y + c_group.height/2;
+	sprintf(command, "ratpoison -c 'ratwarp %d %d'", x, y);
+	system(command);
+
+	update_session(session);
+}
+
+/**
+ * Checks what screen the mouse is on. Focuses that screen.
+ */
+void update_mouse(ratsession *session)
+{
+	// Get information about all frames.
+	char buffer[8192];
+	FILE *fp = popen("ratpoison -c ratinfo", "r");
+	fgets(buffer, sizeof(buffer) - 1, fp);
+	pclose(fp);
+
+	// Go through information about frames.
+	char *pch;
+	pch = strtok(buffer, " ");
+	int x = atoi(pch);
+	pch = strtok(buffer, " ");
+	int y = atoi(pch);
+	group c_group = session->grouplist[session->current_screen];
+
+	int i = 0;
+	for(i = 0; i < session->group_len; i = i + 1)
+	{
+		group o_group = session->grouplist[i];
+		if(x >= o_group.x && x < o_group.x + o_group.width)
+		{
+			if(o_group.nr != c_group.nr)
+			{
+				printf("Mouse on unfocused screen. Changing focus to %d.\n", o_group.nr);
+				char command[100];
+				sprintf(command, "ratpoison -c 'sselect %d'", o_group.nr);
+				system(command);
+				update_session(session);
+			}
+			break;
+		}
+	}
 }

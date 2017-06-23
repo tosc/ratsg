@@ -12,6 +12,9 @@ typedef struct group_struct
 {
 	window *windowlist;
 	int x;
+	int y;
+	int width;
+	int height;
 	int nr;
 	int next;
 	int prev;
@@ -43,7 +46,13 @@ void update_session(ratsession *session);
 
 void session_to_string(ratsession *session, char *group_string);
 
+void move_r(ratsession *session);
+
+void move_l(ratsession *session);
+
 void screen_r(ratsession *session);
 
 void screen_l(ratsession *session);
+
+void update_mouse(ratsession *session);
 #endif

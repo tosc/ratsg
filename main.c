@@ -86,6 +86,7 @@ void server()
 	{
 		// Update session information.
 		update_session(session);
+		update_mouse(session);
 
 		// Check for new commands.
 		char command[COMMAND_MAX];
@@ -95,9 +96,17 @@ void server()
 
 			if(strcmp(command, "move-l") == 0)
 			{
-				screen_l(session);
+				move_l(session);
 			}
 			else if(strcmp(command, "move-r") == 0)
+			{
+				move_r(session);
+			}
+			else if(strcmp(command, "scrn-l") == 0)
+			{
+				screen_l(session);
+			}
+			else if(strcmp(command, "scrn-r") == 0)
 			{
 				screen_r(session);
 			}
