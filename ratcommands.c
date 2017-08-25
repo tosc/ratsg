@@ -459,7 +459,7 @@ void screen_l(ratsession *session)
 	system(command);
 
 	// Move mouse there.
-	c_group = session->grouplist[c_group.next];
+	c_group = session->grouplist[c_group.prev];
 	int x = c_group.x + c_group.width/2;
 	int y = c_group.y + c_group.height/2;
 	sprintf(command, "ratpoison -c 'ratwarp %d %d'", x, y);
