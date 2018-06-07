@@ -15,6 +15,8 @@ typedef struct group_struct
 	int y;
 	int width;
 	int height;
+	int screen_nr;
+	int frame_nr;
 	int nr;
 	int next;
 	int prev;
@@ -26,6 +28,7 @@ typedef struct ratsession_struct
 	group **sortedlist;
 	int group_len;
 	int current_screen;
+	int current_frame;
 } ratsession;
 
 void* create_group(ratsession *session);

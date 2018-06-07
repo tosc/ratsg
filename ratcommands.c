@@ -12,12 +12,9 @@
  */
 void create_groups(ratsession *session)
 {
-	// Run the external ratpoison command to get all the current windows.
+	// Get information about screens.
 	char buffer[8192];
-	FILE *fp;
-	fp = popen("ratpoison -c sdump", "r");
-
-	// Add a new window for each line.
+	FILE *fp = popen("ratpoison -c sdump", "r");
 	fgets(buffer, sizeof(buffer) - 1, fp);
 	pclose(fp);
 
@@ -43,13 +40,12 @@ void create_groups(ratsession *session)
 			i = 0;
 		}
 	}
-	session->group_len = screen_nr;
 
 	// Make room for all the screens.
-	group *groups = malloc(sizeof(group) * screen_nr);
+	int screenX[screen_nr];
+	int screenY[screen_nr];
 
 	// Get the information about all the screens.
-	// Get current group. Creates more groups if needed.
 	strcpy(buffer, bufferold);
 	pch = strtok(buffer, "() ,\n");
 	i = 0;
@@ -62,27 +58,11 @@ void create_groups(ratsession *session)
 		}
 		else if(i == 2)
 		{
-			char command[128];
-			sprintf(command, "ratpoison -c 'gnewbg :%d'", screen_nr - 1);
-			system(command);
-			groups[screen_nr - 1].x = atoi(pch);
-			groups[screen_nr - 1].y = 0;
-			groups[screen_nr - 1].windowlist = NULL;
-			groups[screen_nr - 1].nr = screen_nr - 1;
-			groups[screen_nr - 1].width = 0;
-			groups[screen_nr - 1].height = 0;
+			screenX[screen_nr - 1] = atoi(pch);
 		}
 		else if(i == 3)
 		{
-			groups[screen_nr - 1].y = atoi(pch);
-		}
-		else if(i == 4)
-		{
-			groups[screen_nr - 1].width = atoi(pch);
-		}
-		else if(i == 5)
-		{
-			groups[screen_nr - 1].height = atoi(pch);
+			screenY[screen_nr - 1] = atoi(pch);
 		}
 		pch = strtok(NULL, "() ,\n");
 		i++;
@@ -92,13 +72,98 @@ void create_groups(ratsession *session)
 		}
 	}
 
+	// Get information about all frames.
+	fp = popen("ratpoison -c sfdump", "r");
+	fgets(buffer, sizeof(buffer) - 1, fp);
+	pclose(fp);
+
+	//Copy information
+	strcpy(bufferold, buffer);
+
+	// Go through information about frames.
+	pch = strtok(buffer, "() ,\n");
+	i = 0;
+	int nr = 0;
+	while(pch != NULL)
+	{
+		// pch is at the start of a new frame.
+		if(strcmp(pch, "frame") == 0)
+		{
+			i = 0;
+			nr++;
+		}
+		pch = strtok(NULL, "() ,\n");
+		i++;
+	}
+	session->group_len = nr;
+
+	// Make room for all the screens.
+	group *groups = malloc(sizeof(group) * nr);
+
+	// Get the information about all the screens.
+	// Get current group. Creates more groups if needed.
+	strcpy(buffer, bufferold);
+	pch = strtok(buffer, "() ,\n");
+	i = 0;
+	nr = 0;
+	while(pch != NULL)
+	{
+		if(strcmp(pch, "frame") == 0)
+		{
+			i = 0;
+			nr++;
+			groups[nr - 1].x = 0;
+			groups[nr - 1].y = 0;
+			groups[nr - 1].windowlist = NULL;
+			groups[nr - 1].nr = nr - 1;
+			groups[nr - 1].frame_nr = 0;
+			groups[nr - 1].screen_nr = 0;
+			groups[nr - 1].width = 0;
+			groups[nr - 1].height = 0;
+		}
+		else if(i == 2)
+		{
+			int fNr = atoi(pch);
+			groups[nr - 1].frame_nr = atoi(pch);
+			char command[128];
+			sprintf(command, "ratpoison -c 'gnewbg :%d'", fNr - 1);
+			system(command);
+		}
+		else if(i == 4)
+		{
+			groups[nr - 1].x = atoi(pch);
+		}
+		else if(i == 6)
+		{
+			groups[nr - 1].y = atoi(pch);
+		}
+		else if(i == 8)
+		{
+			groups[nr - 1].width = atoi(pch);
+		}
+		else if(i == 10)
+		{
+			groups[nr - 1].height = atoi(pch);
+		}
+		else if(i == 21)
+		{
+			int sNr = atoi(pch);
+			groups[nr - 1].screen_nr = sNr;
+			groups[nr - 1].x += screenX[sNr];
+			groups[nr - 1].y += screenY[sNr];
+		}
+		pch = strtok(NULL, "() ,\n");
+		i++;
+	}
+
 	session->grouplist = groups;
 	// Sort the sorted groups
 	group **sortedgroups = malloc(sizeof(group *) * session->group_len);
 	int lastX = -1;
+	int lastY = -1;
 	for(i = 0; i < session->group_len; i = i + 1)
 	{
-		// Sort screens by X.
+		// Sort frames by X.
 		int first = 1;
 		group *c_group;
 		int j;
@@ -120,8 +185,24 @@ void create_groups(ratsession *session)
 					c_group = t_group;
 				}
 			}
+			if(t_group->x == lastX)
+			{
+				if(t_group->y > lastY)
+				{
+					if(first)
+					{
+						c_group = t_group;
+						first = 0;
+					}
+					if(t_group->y < c_group->y)
+					{
+						c_group = t_group;
+					}
+				}
+			}
 		}
 		lastX = c_group->x;
+		lastY = c_group->y;
 		sortedgroups[i] = c_group;
 	}
 	session->sortedlist = sortedgroups;
@@ -263,7 +344,7 @@ void update_group(ratsession *session)
 	// Run the external ratpoison command to get all the current windows.
 	FILE *fp = popen("ratpoison -c windows", "r");
 
-	group c_group = session->grouplist[session->current_screen];
+	group c_group = session->grouplist[session->current_frame];
 	free_windows(c_group.windowlist);
 	c_group.windowlist = NULL;
 	window *windowlist;
@@ -299,7 +380,7 @@ void update_group(ratsession *session)
 			windowlist = w;
 		}
 	}
-	session->grouplist[session->current_screen] = c_group;
+	session->grouplist[session->current_frame] = c_group;
 	pclose(fp);
 }
 
@@ -310,14 +391,21 @@ void update_group(ratsession *session)
  */
 void update_session(ratsession *session)
 {
-	// Update screennr.
+	// Update screennr and framenr
 	session->current_screen = current_screen();
+	int cur_frame = current_frame();
 
 	// Change all current windows to inactive.
 	int i;
 	for(i = 0; i < session->group_len; i = i + 1)
 	{
-		window *c_window = session->grouplist[i].windowlist;
+		group c_group = session->grouplist[i];
+		if(c_group.frame_nr == cur_frame)
+		{
+			session->current_frame = c_group.nr;
+		}
+
+		window *c_window = c_group.windowlist;
 		while(c_window != NULL)
 		{
 			c_window->status = 0;
@@ -327,7 +415,7 @@ void update_session(ratsession *session)
 
 	// Make ratpoison switch to the current group.
 	char command[128];
-	sprintf(command, "ratpoison -c 'gselect :%d'", session->current_screen);
+	sprintf(command, "ratpoison -c 'gselect :%d'", session->current_frame);
 	system(command);
 
 	// Update current groups information.
@@ -397,7 +485,7 @@ void session_to_string(ratsession *session, char *group_string)
  */
 void move_r(ratsession *session)
 {
-	group c_group = session->grouplist[session->current_screen];
+	group c_group = session->grouplist[session->current_frame];
 	char command[100];
 	sprintf(command, "ratpoison -c 'gmove :%d'", c_group.next);
 	system(command);
@@ -414,7 +502,7 @@ void move_r(ratsession *session)
  */
 void move_l(ratsession *session)
 {
-	group c_group = session->grouplist[session->current_screen];
+	group c_group = session->grouplist[session->current_frame];
 	char command[100];
 	sprintf(command, "ratpoison -c 'gmove :%d'", c_group.prev);
 	system(command);
@@ -432,13 +520,13 @@ void move_l(ratsession *session)
 void screen_r(ratsession *session)
 {
 	// Switch focus to right screen.
-	group c_group = session->grouplist[session->current_screen];
+	group c_group = session->grouplist[session->current_frame];
+	c_group = session->grouplist[c_group.next];
 	char command[100];
-	sprintf(command, "ratpoison -c 'sselect %d'", c_group.next);
+	sprintf(command, "ratpoison -c 'fselect %d'", c_group.frame_nr);
 	system(command);
 
 	// Move mouse there.
-	c_group = session->grouplist[c_group.next];
 	int x = c_group.x + c_group.width/2;
 	int y = c_group.y + c_group.height/2;
 	sprintf(command, "ratpoison -c 'ratwarp %d %d'", x, y);
@@ -453,13 +541,13 @@ void screen_r(ratsession *session)
 void screen_l(ratsession *session)
 {
 	// Switch focus to left screen.
-	group c_group = session->grouplist[session->current_screen];
+	group c_group = session->grouplist[session->current_frame];
+	c_group = session->grouplist[c_group.prev];
 	char command[100];
-	sprintf(command, "ratpoison -c 'sselect %d'", c_group.prev);
+	sprintf(command, "ratpoison -c 'fselect %d'", c_group.frame_nr);
 	system(command);
 
 	// Move mouse there.
-	c_group = session->grouplist[c_group.prev];
 	int x = c_group.x + c_group.width/2;
 	int y = c_group.y + c_group.height/2;
 	sprintf(command, "ratpoison -c 'ratwarp %d %d'", x, y);
@@ -483,21 +571,21 @@ void update_mouse(ratsession *session)
 	char *pch;
 	pch = strtok(buffer, " ");
 	int x = atoi(pch);
-	pch = strtok(buffer, " ");
+	pch = strtok(NULL, " ");
 	int y = atoi(pch);
-	group c_group = session->grouplist[session->current_screen];
+	group c_group = session->grouplist[session->current_frame];
 
 	int i = 0;
 	for(i = 0; i < session->group_len; i = i + 1)
 	{
 		group o_group = session->grouplist[i];
-		if(x >= o_group.x && x < o_group.x + o_group.width)
+		if(x >= o_group.x && x < o_group.x + o_group.width && y >= o_group.y && y < o_group.y + o_group.height)
 		{
 			if(o_group.nr != c_group.nr)
 			{
-				printf("Mouse on unfocused screen. Changing focus to %d.\n", o_group.nr);
+				printf("Mouse on unfocused frame. Changing focus to %d.\n", o_group.frame_nr);
 				char command[100];
-				sprintf(command, "ratpoison -c 'sselect %d'", o_group.nr);
+				sprintf(command, "ratpoison -c 'fselect %d'", o_group.frame_nr);
 				system(command);
 				update_session(session);
 			}
