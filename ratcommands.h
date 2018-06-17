@@ -17,16 +17,19 @@ typedef struct group_struct
 	int height;
 	int screen_nr;
 	int frame_nr;
-	int nr;
 	int next;
 	int prev;
+	int enabled;
 } group;
 
 typedef struct ratsession_struct
 {
 	group *grouplist;
 	group **sortedlist;
+	int screenX[10];
+	int screenY[10];
 	int group_len;
+	int group_max;
 	int current_screen;
 	int current_frame;
 } ratsession;
@@ -43,7 +46,7 @@ window* new_window();
 
 ratsession* new_session();
 
-void update_group(ratsession *session);
+void update_groups(ratsession *session);
 
 void update_session(ratsession *session);
 

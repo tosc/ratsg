@@ -93,6 +93,7 @@ void server()
 		if(get_info(command, FIFO_COMMAND))
 		{
 			printf("%s\n", command);
+			printf("%d\n", session->current_frame);
 
 			if(strcmp(command, "move-l") == 0)
 			{
